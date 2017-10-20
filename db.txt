@@ -1,0 +1,65 @@
+$container = require 'config/container.php';
+        $adapter = $container->get(\Zend\Db\Adapter\Adapter::class);
+        $content = Parser::getData();
+
+        $sqlHash = "SELECT * FROM `logs` WHERE `hash` = ?";
+        $sqlView = "SELECT * FROM  `views` WHERE `view` = ?";
+        $sqlRequest = "SELECT * FROM  `requests` WHERE `hash` = ?";
+        $sqlAsset = "SELECT * FROM `assets` WHERE `asset` = ?";
+
+        foreach ($content as $row) {
+            $hash = md5($row);
+            $resultLogs = $adapter->query($sqlHash, [$hash]);
+
+            if(count($resultLogs) === 0) {
+                $a = unserialize($row);
+                $view = $a['view'];
+                $request = $a['request'];
+                $hashRequest = md5($request);
+                $assets = $a['assets'];
+                $resultViews = $adapter->query($sqlView, [$view]);
+                if(count($resultViews) === 0){
+                    $statement = $adapter->createStatement("INSERT INTO `views` (view) VALUES ('$view')");
+                    $idV = $statement->execute()->getGeneratedValue();
+                } else {
+                    $idV = $resultViews->toArray()[0]['id'];
+                }
+                $resultRequests = $adapter->query($sqlRequest, [$hashRequest]);
+                if(count($resultRequests) === 0){
+                    $statement = $adapter->createStatement("INSERT INTO `requests` (request, hash) VALUES ('$request', '$hashRequest')");
+                    $idR = $statement->execute()->getGeneratedValue();
+                } else {
+                    $idR = $resultRequests->toArray()[0]['id'];
+                }
+
+                $statement = $adapter->createStatement("INSERT INTO `logs` (id_v, id_r, hash)
+                                                        VALUES ('$idV', '$idR', '$hash' )");
+
+                $idL = $statement->execute()->getGeneratedValue();
+                foreach ($assets as $asset) {
+                    foreach ($asset as $sample) {
+                        $resultAssets = $adapter->query($sqlAsset, [$sample]);
+
+                        if (count($resultAssets) === 0) {
+                            $statement = $adapter->createStatement("INSERT INTO `assets` (asset) VALUES ('$sample')");
+                            $idA = $statement->execute()->getGeneratedValue();
+                        } else {
+                            $idA = $resultAssets->toArray()[0]['id'];
+                        }
+
+                        $statement = $adapter->createStatement("INSERT INTO `logs_assets` (id_l, id_a) VALUES ('$idL', '$idA')");
+                        $statement->execute();
+                    }
+                }
+
+            }
+
+        }
+
+
+        $statementTop = $this->adapter->createStatement("SELECT l.id_v FROM `logs` l
+                                                                 JOIN ( SELECT id_v, COUNT(*) AS cnt
+                                                                   FROM `logs`
+                                                                   GROUP BY id_v
+                                                                 ) l2 ON ( l2.id_v = l.id_v )
+                                                                 ORDER BY l2.cnt DESC; ");

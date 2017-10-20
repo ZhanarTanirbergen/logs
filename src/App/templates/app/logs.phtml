@@ -1,0 +1,32 @@
+<?php
+    $this->headTitle('Logs');
+?>
+<div class="data">
+    <table class= "table table-striped">
+        <thead>
+        <tr class = "tr success">
+            <th>View</th>
+            <th>Request</th>
+        </tr>
+        </thead>
+
+    <!--    --><?php //var_dump($this->paginator->getPages()); ?>
+        <?php foreach ($this->paginator as $data) { ?>
+            <tr>
+                <td class="col-sm-3"><?php echo $data['view']; ?></td>
+                <td class="col-sm-3"><?php echo $data['request']; ?></td>
+            </tr>
+        <?php } ?>
+
+    <!---->
+    <!--    --><?php //$this->paginationControl(
+    //    $this->paginator,
+    //    'Sliding',
+    //    'my_pagination_control') ?>
+
+    </table>
+</div>
+
+
+
+
